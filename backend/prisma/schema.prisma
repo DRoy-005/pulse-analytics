@@ -1,0 +1,160 @@
+// ============================================================
+// PulseAnalytics Database Schema
+// ============================================================
+//
+// Core database models:
+//
+// Workspace
+//    ├── Users
+//    ├── Sessions
+//    └── Events
+//
+// ============================================================
+
+
+// ============================================================
+// Prisma Client
+// ============================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+
+// ============================================================
+// PostgreSQL
+// ============================================================
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+// ============================================================
+// Workspace
+// ============================================================
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  sessions  Session[]
+  events    Event[]
+}
+
+
+// ============================================================
+// User
+// ============================================================
+//
+// Represents an end-user of the product being analyzed.
+//
+// This is NOT the PulseAnalytics dashboard account.
+//
+
+model User {
+  id          String   @id @default(cuid())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  externalId  String
+  email       String?
+
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sessions    Session[]
+  events      Event[]
+
+  @@unique([workspaceId, externalId])
+  @@index([workspaceId])
+  @@index([email])
+}
+
+
+// ============================================================
+// Session
+// ============================================================
+
+model Session {
+  id             String   @id @default(cuid())
+
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  userId         String?
+  user           User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  startedAt      DateTime @default(now())
+  endedAt        DateTime?
+
+  deviceType     String?
+  browser        String?
+  operatingSystem String?
+
+  country        String?
+  city           String?
+
+  createdAt      DateTime @default(now())
+
+  events         Event[]
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([startedAt])
+}
+
+
+// ============================================================
+// Event
+// ============================================================
+//
+// Central analytics entity.
+//
+// Examples:
+//
+// page_viewed
+// button_clicked
+// signup_completed
+// checkout_started
+// feature_used
+//
+
+model Event {
+  id          String   @id @default(cuid())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  userId      String?
+  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  sessionId   String?
+  session     Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  name        String
+
+  properties  Json?
+
+  pageUrl     String?
+  pageTitle   String?
+
+  timestamp   DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId])
+  @@index([workspaceId, name])
+  @@index([workspaceId, timestamp])
+  @@index([userId])
+  @@index([sessionId])
+}
