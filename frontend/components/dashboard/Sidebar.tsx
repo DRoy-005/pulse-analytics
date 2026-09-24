@@ -8,14 +8,15 @@
 //
 // Responsibilities:
 // 1. Display the PulseAnalytics logo
-// 2. Display analytics navigation
-// 3. Display workspace navigation
-// 4. Display workspace information
+// 2. Navigate between analytics pages
+// 3. Highlight the currently active page
+// 4. Display workspace navigation
 // 5. Handle the mobile sidebar open/close state
 //
-// Later, the navigation buttons will become real Next.js links.
-//
 // ============================================================
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import {
   Activity,
@@ -32,39 +33,39 @@ import {
 } from "lucide-react";
 
 // ============================================================
-// Navigation Items
+// Main Navigation
 // ============================================================
 
 const navItems = [
   {
     label: "Overview",
     icon: LayoutDashboard,
-    active: true,
+    href: "/dashboard",
   },
   {
     label: "Realtime",
     icon: Activity,
-    active: false,
+    href: "/realtime",
   },
   {
     label: "Events",
     icon: MousePointerClick,
-    active: false,
+    href: "/events",
   },
   {
     label: "Segments",
     icon: Users,
-    active: false,
+    href: "/segments",
   },
   {
     label: "Reports",
     icon: FileBarChart,
-    active: false,
+    href: "/reports",
   },
   {
     label: "Insights",
     icon: Sparkles,
-    active: false,
+    href: "/insights",
   },
 ];
 
@@ -76,15 +77,17 @@ const secondaryNav = [
   {
     label: "Settings",
     icon: Settings,
+    href: "/settings",
   },
   {
     label: "Help & Support",
     icon: CircleHelp,
+    href: "/help",
   },
 ];
 
 // ============================================================
-// Sidebar Props
+// Component Props
 // ============================================================
 
 interface SidebarProps {
@@ -100,6 +103,15 @@ export function Sidebar({
   mobileMenuOpen,
   onClose,
 }: SidebarProps) {
+  // usePathname() gives us the current URL path.
+  //
+  // Example:
+  // /dashboard -> Overview is active
+  // /events    -> Events is active
+  // /insights  -> Insights is active
+
+  const pathname = usePathname();
+
   return (
     <>
       {/* ======================================================
@@ -124,25 +136,28 @@ export function Sidebar({
             : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* ==================================================
-            Logo
-            ================================================== */}
+        {/* ====================================================
+            Sidebar Header
+            ==================================================== */}
 
         <div className="flex h-16 items-center justify-between border-b border-slate-200 px-5 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
 
-            {/* Logo icon */}
+          <Link
+            href="/dashboard"
+            onClick={onClose}
+            className="flex items-center gap-2.5"
+          >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white">
               <BarChart3 size={19} />
             </div>
 
-            {/* Product name */}
             <span className="text-lg font-semibold tracking-tight">
               PulseAnalytics
             </span>
-          </div>
+          </Link>
 
           {/* Mobile close button */}
+
           <button
             onClick={onClose}
             className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden dark:hover:bg-slate-800"
@@ -152,26 +167,41 @@ export function Sidebar({
           </button>
         </div>
 
-        {/* ==================================================
+        {/* ====================================================
             Navigation
-            ================================================== */}
+            ==================================================== */}
 
-        <nav className="flex-1 px-3 py-5">
+        <nav className="flex-1 overflow-y-auto px-3 py-5">
 
-          {/* Analytics navigation */}
+          {/* Analytics */}
+
           <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Analytics
           </p>
 
           <div className="space-y-1">
+
             {navItems.map((item) => {
               const Icon = item.icon;
 
+              // Only mark the exact dashboard route as active.
+              //
+              // This prevents /dashboard from being active when
+              // we eventually create nested dashboard routes.
+
+              const isActive =
+                pathname === item.href;
+
               return (
-                <button
+                <Link
                   key={item.label}
+                  href={item.href}
+                  onClick={onClose}
+                  aria-current={
+                    isActive ? "page" : undefined
+                  }
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                    item.active
+                    isActive
                       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
                   }`}
@@ -182,27 +212,39 @@ export function Sidebar({
                   />
 
                   <span>{item.label}</span>
-                </button>
+                </Link>
               );
             })}
+
           </div>
 
-          {/* ==================================================
-              Workspace Navigation
-              ================================================== */}
+          {/* Workspace */}
 
           <p className="mb-2 mt-8 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Workspace
           </p>
 
           <div className="space-y-1">
+
             {secondaryNav.map((item) => {
               const Icon = item.icon;
 
+              const isActive =
+                pathname === item.href;
+
               return (
-                <button
+                <Link
                   key={item.label}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                  href={item.href}
+                  onClick={onClose}
+                  aria-current={
+                    isActive ? "page" : undefined
+                  }
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                  }`}
                 >
                   <Icon
                     size={18}
@@ -210,27 +252,31 @@ export function Sidebar({
                   />
 
                   <span>{item.label}</span>
-                </button>
+                </Link>
               );
             })}
+
           </div>
         </nav>
 
-        {/* ==================================================
-            Workspace Information
-            ================================================== */}
+        {/* ====================================================
+            Workspace / User Section
+            ==================================================== */}
 
         <div className="border-t border-slate-200 p-3 dark:border-slate-800">
+
           <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
 
             <div className="flex items-center gap-3">
 
-              {/* Workspace avatar */}
+              {/* Avatar */}
+
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
                 DR
               </div>
 
               {/* Workspace information */}
+
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
                   Demo Workspace
@@ -241,16 +287,19 @@ export function Sidebar({
                 </p>
               </div>
 
-              {/* Logout button */}
+              {/* Logout */}
+
               <button
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                 aria-label="Log out"
               >
                 <LogOut size={16} />
               </button>
 
             </div>
+
           </div>
+
         </div>
       </aside>
     </>
