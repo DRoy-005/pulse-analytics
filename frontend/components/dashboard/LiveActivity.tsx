@@ -1,135 +1,357 @@
 "use client";
 
 // ============================================================
-// LiveActivity
+// Live Activity
 // ============================================================
 //
-// Displays the most recent events happening in the product.
+// Displays the most recent analytics events received by
+// PulseAnalytics.
 //
-// For now, the events are mock data.
-// Later, this component will receive real-time events from
-// our backend using WebSockets / Socket.IO.
+// Data comes directly from the backend API.
 //
 // ============================================================
+
+import { useEffect, useState } from "react";
 
 import {
   Activity,
   MousePointerClick,
+  UserPlus,
+  Eye,
+  ShoppingCart,
 } from "lucide-react";
 
-// ============================================================
-// Temporary Event Data
-// ============================================================
-//
-// Later this will come from the backend.
-//
-
-const recentEvents = [
-  {
-    event: "Page Viewed",
-    user: "user_1024",
-    location: "Kolkata, IN",
-    time: "Just now",
-  },
-  {
-    event: "Button Clicked",
-    user: "user_871",
-    location: "Mumbai, IN",
-    time: "2 min ago",
-  },
-  {
-    event: "Signup Completed",
-    user: "user_654",
-    location: "Delhi, IN",
-    time: "4 min ago",
-  },
-  {
-    event: "Product Viewed",
-    user: "user_441",
-    location: "Bangalore, IN",
-    time: "7 min ago",
-  },
-  {
-    event: "Checkout Started",
-    user: "user_328",
-    location: "Pune, IN",
-    time: "9 min ago",
-  },
-];
+import {
+  getRecentEvents,
+  type AnalyticsEvent,
+} from "@/lib/api";
 
 // ============================================================
-// LiveActivity Component
+// Constants
+// ============================================================
+
+import { CURRENT_WORKSPACE_ID } from "@/lib/workspace";
+// ============================================================
+// Helpers
+// ============================================================
+
+function getEventIcon(eventName: string) {
+  const name = eventName.toLowerCase();
+
+  if (
+    name.includes("signup") ||
+    name.includes("register")
+  ) {
+    return UserPlus;
+  }
+
+  if (
+    name.includes("checkout") ||
+    name.includes("purchase")
+  ) {
+    return ShoppingCart;
+  }
+
+  if (
+    name.includes("page") ||
+    name.includes("view")
+  ) {
+    return Eye;
+  }
+
+  if (
+    name.includes("click") ||
+    name.includes("button")
+  ) {
+    return MousePointerClick;
+  }
+
+  return Activity;
+}
+
+// ============================================================
+// Format Event Name
+// ============================================================
+
+function formatEventName(
+  eventName: string
+) {
+  return eventName
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) =>
+      letter.toUpperCase()
+    );
+}
+
+// ============================================================
+// Relative Time
+// ============================================================
+
+function formatRelativeTime(
+  timestamp: string
+) {
+  const eventTime =
+    new Date(timestamp).getTime();
+
+  const now = Date.now();
+
+  const difference = Math.max(
+    0,
+    now - eventTime
+  );
+
+  const seconds = Math.floor(
+    difference / 1000
+  );
+
+  if (seconds < 60) {
+    return `${seconds}s ago`;
+  }
+
+  const minutes = Math.floor(
+    seconds / 60
+  );
+
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+
+  const hours = Math.floor(
+    minutes / 60
+  );
+
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+
+  const days = Math.floor(
+    hours / 24
+  );
+
+  return `${days}d ago`;
+}
+
+// ============================================================
+// Component
 // ============================================================
 
 export function LiveActivity() {
-  return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+  const [events, setEvents] = useState<
+    AnalyticsEvent[]
+  >([]);
 
-      {/* ======================================================
-          Section Header
-          ====================================================== */}
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  // ----------------------------------------------------------
+  // Fetch recent events
+  // ----------------------------------------------------------
+
+  useEffect(() => {
+    async function loadEvents() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response =
+  await getRecentEvents(
+    CURRENT_WORKSPACE_ID,
+    1,
+    8
+  );
+
+        setEvents(response.data);
+      } catch (error) {
+        console.error(
+          "Failed to load recent events:",
+          error
+        );
+
+        setError(
+          "Unable to load recent activity."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadEvents();
+  }, []);
+
+  // ==========================================================
+  // Render
+  // ==========================================================
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950 md:p-6">
+
+      {/* ====================================================
+          Header
+          ==================================================== */}
 
       <div className="mb-5 flex items-center justify-between">
+
         <div>
-          {/* Title + live indicator */}
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold">
-              Live activity
-            </h2>
+          <h2 className="text-base font-semibold">
+            Live activity
+          </h2>
 
-            {/* Indicates that events are being received live */}
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              Live
-            </span>
-          </div>
-
-          {/* Description */}
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Latest events from your users
+            Recent events from your product
           </p>
         </div>
 
-        {/* Activity icon */}
-        <Activity
-          size={18}
-          className="text-slate-400"
-        />
+        {/* Live indicator */}
+
+        <div className="flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+
+          <span className="relative flex h-2 w-2">
+
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+
+          </span>
+
+          Live
+
+        </div>
+
       </div>
 
-      {/* ======================================================
-          Event List
-          ====================================================== */}
+      {/* ====================================================
+          Loading
+          ==================================================== */}
 
-      <div className="divide-y divide-slate-100 dark:divide-slate-800">
-        {recentEvents.map((event, index) => (
-          <div
-            key={`${event.user}-${index}`}
-            className="flex items-center gap-3 py-3.5"
-          >
-            {/* Event icon */}
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
-              <MousePointerClick size={16} />
-            </div>
+      {loading && (
+        <div className="space-y-4">
 
-            {/* Event information */}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">
-                {event.event}
-              </p>
+          {Array.from({ length: 5 }).map(
+            (_, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-3"
+              >
 
-              <p className="mt-0.5 truncate text-xs text-slate-500">
-                {event.user} · {event.location}
-              </p>
-            </div>
+                <div className="h-9 w-9 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
 
-            {/* Time since event occurred */}
-            <span className="shrink-0 text-xs text-slate-400">
-              {event.time}
-            </span>
+                <div className="flex-1 space-y-2">
+
+                  <div className="h-3 w-40 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+
+                  <div className="h-2.5 w-24 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+
+                </div>
+
+              </div>
+            )
+          )}
+
+        </div>
+      )}
+
+      {/* ====================================================
+          Error
+          ==================================================== */}
+
+      {!loading && error && (
+        <div className="flex min-h-[220px] items-center justify-center text-sm text-red-500">
+          {error}
+        </div>
+      )}
+
+      {/* ====================================================
+          Empty State
+          ==================================================== */}
+
+      {!loading &&
+        !error &&
+        events.length === 0 && (
+          <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
+
+            <Activity
+              size={28}
+              className="mb-3 text-slate-300 dark:text-slate-700"
+            />
+
+            <p className="text-sm font-medium">
+              No activity yet
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Events will appear here when users
+              interact with your product.
+            </p>
+
           </div>
-        ))}
-      </div>
-    </section>
+        )}
+
+      {/* ====================================================
+          Events
+          ==================================================== */}
+
+      {!loading &&
+        !error &&
+        events.length > 0 && (
+          <div className="space-y-1">
+
+            {events.map((event) => {
+              const Icon =
+                getEventIcon(event.name);
+
+              const userName =
+                event.user?.email ||
+                event.user?.externalId ||
+                "Anonymous user";
+
+              return (
+                <div
+                  key={event.id}
+                  className="flex items-center gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900"
+                >
+
+                  {/* Event icon */}
+
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+
+                    <Icon size={16} />
+
+                  </div>
+
+                  {/* Event information */}
+
+                  <div className="min-w-0 flex-1">
+
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                      {formatEventName(
+                        event.name
+                      )}
+                    </p>
+
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                      {userName}
+                    </p>
+
+                  </div>
+
+                  {/* Timestamp */}
+
+                  <span className="shrink-0 text-xs text-slate-400">
+                    {formatRelativeTime(
+                      event.timestamp
+                    )}
+                  </span>
+
+                </div>
+              );
+            })}
+
+          </div>
+        )}
+
+    </div>
   );
 }

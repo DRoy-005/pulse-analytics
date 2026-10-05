@@ -4,57 +4,110 @@
 // TopEvents
 // ============================================================
 //
-// Displays the events that are triggered most frequently.
+// Displays the most frequently triggered events.
 //
-// For now, the component uses mock data.
-// Later, this will be calculated from the actual events stored
-// in our PostgreSQL database.
+// Data comes directly from PostgreSQL through the
+// PulseAnalytics analytics API.
 //
 // ============================================================
 
-import { MousePointerClick } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import {
+  MousePointerClick,
+} from "lucide-react";
+
+import {
+  getTopEvents,
+  type TopEvent,
+} from "@/lib/api";
+
+import {
+  CURRENT_WORKSPACE_ID,
+} from "@/lib/workspace";
 
 // ============================================================
-// Temporary Top Event Data
+// Helpers
 // ============================================================
 
-const topEvents = [
-  {
-    name: "page_view",
-    count: "18,429",
-    percentage: 82,
-  },
-  {
-    name: "button_click",
-    count: "9,284",
-    percentage: 64,
-  },
-  {
-    name: "product_view",
-    count: "6,742",
-    percentage: 48,
-  },
-  {
-    name: "signup",
-    count: "4,218",
-    percentage: 31,
-  },
-];
+function formatEventName(
+  eventName: string
+) {
+  return eventName
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) =>
+      letter.toUpperCase()
+    );
+}
 
 // ============================================================
-// TopEvents Component
+// Component
 // ============================================================
 
-export function TopEvents() {
+export function TopEvents({
+  days,
+}: {
+  days: number;
+}) {
+  const [events, setEvents] =
+    useState<TopEvent[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  // ==========================================================
+  // Load Top Events
+  // ==========================================================
+
+  useEffect(() => {
+    async function loadTopEvents() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response =
+          await getTopEvents(
+            CURRENT_WORKSPACE_ID,
+            days,
+            5
+          );
+
+        setEvents(response.data);
+      } catch (error) {
+        console.error(
+          "Failed to load top events:",
+          error
+        );
+
+        setError(
+          "Unable to load top events."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTopEvents();
+  }, []);
+
+  // ==========================================================
+  // Render
+  // ==========================================================
+
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
 
-      {/* ======================================================
+      {/* ====================================================
           Section Header
-          ====================================================== */}
+          ==================================================== */}
 
       <div className="mb-6 flex items-center justify-between">
+
         <div>
+
           <h2 className="text-base font-semibold">
             Top events
           </h2>
@@ -62,54 +115,130 @@ export function TopEvents() {
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Most frequently triggered events
           </p>
+
         </div>
 
-        {/* Section icon */}
         <MousePointerClick
           size={18}
           className="text-slate-400"
         />
+
       </div>
 
-      {/* ======================================================
-          Event List
-          ====================================================== */}
+      {/* ====================================================
+          Loading
+          ==================================================== */}
 
-      <div className="space-y-5">
-        {topEvents.map((event) => (
-          <div key={event.name}>
+      {loading && (
+        <div className="space-y-5">
 
-            {/* Event name + event count */}
-            <div className="mb-2 flex items-center justify-between">
-              <span className="font-mono text-xs text-slate-600 dark:text-slate-300">
-                {event.name}
-              </span>
+          {Array.from({
+            length: 5,
+          }).map((_, index) => (
+            <div key={index}>
 
-              <span className="text-xs font-medium text-slate-500">
-                {event.count}
-              </span>
+              <div className="mb-2 flex justify-between">
+
+                <div className="h-3 w-28 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+
+                <div className="h-3 w-10 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+
+              </div>
+
+              <div className="h-2 animate-pulse rounded-full bg-slate-100 dark:bg-slate-800" />
+
             </div>
+          ))}
 
-            {/* ==================================================
-                Progress Bar
-                ==================================================
-                
-                The width represents the relative activity of
-                each event.
-                
-                ================================================== */}
+        </div>
+      )}
 
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-              <div
-                className="h-full rounded-full bg-emerald-500 transition-all"
-                style={{
-                  width: `${event.percentage}%`,
-                }}
-              />
-            </div>
+      {/* ====================================================
+          Error
+          ==================================================== */}
+
+      {!loading && error && (
+        <div className="flex min-h-[220px] items-center justify-center text-sm text-red-500">
+          {error}
+        </div>
+      )}
+
+      {/* ====================================================
+          Empty State
+          ==================================================== */}
+
+      {!loading &&
+        !error &&
+        events.length === 0 && (
+          <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
+
+            <MousePointerClick
+              size={28}
+              className="mb-3 text-slate-300 dark:text-slate-700"
+            />
+
+            <p className="text-sm font-medium">
+              No events yet
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Event activity will appear here
+              once your product starts receiving
+              events.
+            </p>
+
           </div>
-        ))}
-      </div>
+        )}
+
+      {/* ====================================================
+          Event List
+          ==================================================== */}
+
+      {!loading &&
+        !error &&
+        events.length > 0 && (
+          <div className="space-y-5">
+
+            {events.map((event) => (
+              <div key={event.name}>
+
+                {/* Event name + count */}
+
+                <div className="mb-2 flex items-center justify-between">
+
+                  <span className="font-mono text-xs text-slate-600 dark:text-slate-300">
+                    {formatEventName(
+                      event.name
+                    )}
+                  </span>
+
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    {event.count.toLocaleString(
+                      "en-IN"
+                    )}
+                  </span>
+
+                </div>
+
+                {/* Progress bar */}
+
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    style={{
+                      width: `${event.percentage}%`,
+                    }}
+                  />
+
+                </div>
+
+              </div>
+            ))}
+
+          </div>
+        )}
+
     </section>
   );
 }

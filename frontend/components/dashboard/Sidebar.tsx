@@ -1,17 +1,16 @@
 "use client";
 
 // ============================================================
-// Sidebar
+// PulseAnalytics Sidebar
 // ============================================================
-//
-// Main navigation sidebar for PulseAnalytics.
 //
 // Responsibilities:
 // 1. Display the PulseAnalytics logo
-// 2. Navigate between analytics pages
+// 2. Display primary workspace navigation
 // 3. Highlight the currently active page
-// 4. Display workspace navigation
-// 5. Handle the mobile sidebar open/close state
+// 4. Support mobile navigation
+// 5. Show upcoming features as "SOON"
+// 6. Display the current workspace
 //
 // ============================================================
 
@@ -21,11 +20,11 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   BarChart3,
+  ChevronRight,
   CircleHelp,
-  FileBarChart,
+  FileText,
   LayoutDashboard,
-  LogOut,
-  MousePointerClick,
+  Lightbulb,
   Settings,
   Sparkles,
   Users,
@@ -33,67 +32,74 @@ import {
 } from "lucide-react";
 
 // ============================================================
-// Main Navigation
-// ============================================================
-
-const navItems = [
-  {
-    label: "Overview",
-    icon: LayoutDashboard,
-    href: "/dashboard",
-  },
-  {
-    label: "Realtime",
-    icon: Activity,
-    href: "/realtime",
-  },
-  {
-    label: "Events",
-    icon: MousePointerClick,
-    href: "/events",
-  },
-  {
-    label: "Segments",
-    icon: Users,
-    href: "/segments",
-  },
-  {
-    label: "Reports",
-    icon: FileBarChart,
-    href: "/reports",
-  },
-  {
-    label: "Insights",
-    icon: Sparkles,
-    href: "/insights",
-  },
-];
-
-// ============================================================
-// Secondary Navigation
-// ============================================================
-
-const secondaryNav = [
-  {
-    label: "Settings",
-    icon: Settings,
-    href: "/settings",
-  },
-  {
-    label: "Help & Support",
-    icon: CircleHelp,
-    href: "/help",
-  },
-];
-
-// ============================================================
-// Component Props
+// Types
 // ============================================================
 
 interface SidebarProps {
   mobileMenuOpen: boolean;
   onClose: () => void;
 }
+
+// ============================================================
+// Primary navigation
+// ============================================================
+//
+// Working pages have an href without `soon`.
+// Upcoming pages keep `soon: true` and remain disabled.
+//
+// ============================================================
+
+const navigationItems = [
+  {
+    label: "Overview",
+    href: "/",
+    icon: LayoutDashboard,
+  },
+  {
+    label: "Realtime",
+    href: "/realtime",
+    icon: Activity,
+  },
+  {
+    label: "Events",
+    href: "/events",
+    icon: Activity,
+  },
+  {
+    label: "Segments",
+    href: "/segments",
+    icon: Users,
+  },
+  {
+    label: "Reports",
+    href: "/reports",
+    icon: FileText,
+  },
+  {
+    label: "Insights",
+    href: "/insights",
+    icon: Lightbulb,
+  },
+];
+
+// ============================================================
+// Secondary navigation
+// ============================================================
+
+const secondaryItems = [
+  {
+    label: "Settings",
+    href: "/settings",
+    icon: Settings,
+    soon: true,
+  },
+  {
+    label: "Help & Support",
+    href: "/help",
+    icon: CircleHelp,
+    soon: true,
+  },
+];
 
 // ============================================================
 // Sidebar Component
@@ -103,25 +109,32 @@ export function Sidebar({
   mobileMenuOpen,
   onClose,
 }: SidebarProps) {
-  // usePathname() gives us the current URL path.
-  //
-  // Example:
-  // /dashboard -> Overview is active
-  // /events    -> Events is active
-  // /insights  -> Insights is active
-
   const pathname = usePathname();
+
+  // ----------------------------------------------------------
+  // Determine whether a navigation item is active
+  // ----------------------------------------------------------
+
+  function isActive(href: string) {
+    if (href === "/") {
+      return pathname === "/";
+    }
+
+    return pathname === href;
+  }
 
   return (
     <>
       {/* ======================================================
-          Mobile Overlay
+          Mobile overlay
           ====================================================== */}
 
       {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+        <button
+          type="button"
+          aria-label="Close navigation"
           onClick={onClose}
+          className="fixed inset-0 z-40 bg-slate-950/30 lg:hidden"
         />
       )}
 
@@ -130,28 +143,37 @@ export function Sidebar({
           ====================================================== */}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950 ${
-          mobileMenuOpen
-            ? "translate-x-0"
-            : "-translate-x-full lg:translate-x-0"
-        }`}
+        className={`
+          fixed inset-y-0 left-0 z-50
+          flex w-64 flex-col
+          border-r border-slate-200
+          bg-white
+          transition-transform duration-200
+          dark:border-slate-800
+          dark:bg-slate-950
+          lg:translate-x-0
+          ${
+            mobileMenuOpen
+              ? "translate-x-0"
+              : "-translate-x-full"
+          }
+        `}
       >
-        {/* ====================================================
-            Sidebar Header
-            ==================================================== */}
+        {/* ==================================================
+            Logo
+            ================================================== */}
 
         <div className="flex h-16 items-center justify-between border-b border-slate-200 px-5 dark:border-slate-800">
-
           <Link
-            href="/dashboard"
+            href="/"
             onClick={onClose}
             className="flex items-center gap-2.5"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white">
-              <BarChart3 size={19} />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-sm font-bold text-white shadow-sm">
+              P
             </div>
 
-            <span className="text-lg font-semibold tracking-tight">
+            <span className="text-base font-semibold tracking-tight text-slate-950 dark:text-white">
               PulseAnalytics
             </span>
           </Link>
@@ -159,147 +181,181 @@ export function Sidebar({
           {/* Mobile close button */}
 
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden dark:hover:bg-slate-800"
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden dark:text-slate-400 dark:hover:bg-slate-900"
             aria-label="Close navigation menu"
           >
             <X size={19} />
           </button>
         </div>
 
-        {/* ====================================================
+        {/* ==================================================
             Navigation
-            ==================================================== */}
+            ================================================== */}
 
-        <nav className="flex-1 overflow-y-auto px-3 py-5">
+        <div className="flex-1 overflow-y-auto px-3 py-5">
+          {/* ------------------------------------------------
+              Primary navigation
+              ------------------------------------------------ */}
 
-          {/* Analytics */}
-
-          <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            Analytics
-          </p>
-
-          <div className="space-y-1">
-
-            {navItems.map((item) => {
-              const Icon = item.icon;
-
-              // Only mark the exact dashboard route as active.
-              //
-              // This prevents /dashboard from being active when
-              // we eventually create nested dashboard routes.
-
-              const isActive =
-                pathname === item.href;
-
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  onClick={onClose}
-                  aria-current={
-                    isActive ? "page" : undefined
-                  }
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  <Icon
-                    size={18}
-                    strokeWidth={1.8}
-                  />
-
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-
-          </div>
-
-          {/* Workspace */}
-
-          <p className="mb-2 mt-8 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Workspace
           </p>
 
-          <div className="space-y-1">
-
-            {secondaryNav.map((item) => {
+          <nav className="space-y-1">
+            {navigationItems.map((item) => {
               const Icon = item.icon;
+              const active = isActive(item.href);
 
-              const isActive =
-                pathname === item.href;
+              // ------------------------------------------------
+              // Upcoming feature
+              // ------------------------------------------------
+
+              // if (item.soon) {
+              //   return (
+              //     <div
+              //       key={item.label}
+              //       className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 dark:text-slate-500"
+              //     >
+              //       <Icon size={18} />
+
+              //       <span className="flex-1">
+              //         {item.label}
+              //       </span>
+
+              //       <span className="text-[11px] font-medium">
+              //         SOON
+              //       </span>
+              //     </div>
+              //   );
+              // }
+
+              // ------------------------------------------------
+              // Working page
+              // ------------------------------------------------
 
               return (
                 <Link
                   key={item.label}
                   href={item.href}
                   onClick={onClose}
-                  aria-current={
-                    isActive ? "page" : undefined
-                  }
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
-                  }`}
+                  className={`
+                    flex w-full items-center gap-3
+                    rounded-xl px-3 py-2.5
+                    text-sm
+                    transition-colors
+                    ${
+                      active
+                        ? "bg-emerald-50 font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                    }
+                  `}
                 >
-                  <Icon
-                    size={18}
-                    strokeWidth={1.8}
-                  />
+                  <Icon size={18} />
 
-                  <span>{item.label}</span>
+                  <span className="flex-1">
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}
+          </nav>
 
-          </div>
-        </nav>
+          {/* ==================================================
+              Divider
+              ================================================== */}
 
-        {/* ====================================================
-            Workspace / User Section
-            ==================================================== */}
+          <div className="my-5 border-t border-slate-200 dark:border-slate-800" />
 
-        <div className="border-t border-slate-200 p-3 dark:border-slate-800">
+          {/* ==================================================
+              Secondary navigation
+              ================================================== */}
 
-          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+          <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Workspace
+          </p>
 
-            <div className="flex items-center gap-3">
+          <nav className="space-y-1">
+            {secondaryItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.href);
 
-              {/* Avatar */}
+              if (item.soon) {
+                return (
+                  <div
+                    key={item.label}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 dark:text-slate-500"
+                  >
+                    <Icon size={18} />
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
-                DR
-              </div>
+                    <span className="flex-1">
+                      {item.label}
+                    </span>
 
-              {/* Workspace information */}
+                    <span className="text-[11px] font-medium">
+                      SOON
+                    </span>
+                  </div>
+                );
+              }
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">
-                  Demo Workspace
-                </p>
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={onClose}
+                  className={`
+                    flex w-full items-center gap-3
+                    rounded-xl px-3 py-2.5
+                    text-sm
+                    transition-colors
+                    ${
+                      active
+                        ? "bg-emerald-50 font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                    }
+                  `}
+                >
+                  <Icon size={18} />
 
-                <p className="truncate text-xs text-slate-500">
-                  Free plan
-                </p>
-              </div>
+                  <span className="flex-1">
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
-              {/* Logout */}
+        {/* ==================================================
+            Workspace card
+            ================================================== */}
 
-              <button
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                aria-label="Log out"
-              >
-                <LogOut size={16} />
-              </button>
-
+        <div className="border-t border-slate-200 p-4 dark:border-slate-800">
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm dark:bg-slate-950 dark:text-slate-400">
+              <Sparkles size={17} />
             </div>
 
-          </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                Demo Workspace
+              </p>
 
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                Free workspace
+              </p>
+            </div>
+
+            <ChevronRight
+              size={16}
+              className="shrink-0 text-slate-400"
+            />
+          </button>
         </div>
       </aside>
     </>

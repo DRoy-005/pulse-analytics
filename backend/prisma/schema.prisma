@@ -11,7 +11,6 @@
 //
 // ============================================================
 
-
 // ============================================================
 // Prisma Client
 // ============================================================
@@ -21,7 +20,6 @@ generator client {
   output   = "../src/generated/prisma"
 }
 
-
 // ============================================================
 // PostgreSQL
 // ============================================================
@@ -30,24 +28,23 @@ datasource db {
   provider = "postgresql"
 }
 
-
 // ============================================================
 // Workspace
 // ============================================================
 
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users     User[]
-  sessions  Session[]
-  events    Event[]
+  users    User[]
+  sessions Session[]
+  events   Event[]
+  segments Segment[]
 }
-
 
 // ============================================================
 // User
@@ -59,61 +56,59 @@ model Workspace {
 //
 
 model User {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  externalId  String
-  email       String?
+  externalId String
+  email      String?
 
   firstSeenAt DateTime @default(now())
   lastSeenAt  DateTime @default(now())
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  sessions    Session[]
-  events      Event[]
+  sessions Session[]
+  events   Event[]
 
   @@unique([workspaceId, externalId])
   @@index([workspaceId])
   @@index([email])
 }
 
-
 // ============================================================
 // Session
 // ============================================================
 
 model Session {
-  id             String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  workspaceId    String
-  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  userId         String?
-  user           User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  startedAt      DateTime @default(now())
-  endedAt        DateTime?
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
 
-  deviceType     String?
-  browser        String?
+  deviceType      String?
+  browser         String?
   operatingSystem String?
 
-  country        String?
-  city           String?
+  country String?
+  city    String?
 
-  createdAt      DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  events         Event[]
+  events Event[]
 
   @@index([workspaceId])
   @@index([userId])
   @@index([startedAt])
 }
-
 
 // ============================================================
 // Event
@@ -131,30 +126,94 @@ model Session {
 //
 
 model Event {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  userId      String?
-  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  sessionId   String?
-  session     Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  sessionId String?
+  session   Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
 
-  name        String
+  name String
 
-  properties  Json?
+  properties Json?
 
-  pageUrl     String?
-  pageTitle   String?
+  pageUrl   String?
+  pageTitle String?
 
-  timestamp   DateTime @default(now())
-  createdAt   DateTime @default(now())
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([workspaceId])
   @@index([workspaceId, name])
   @@index([workspaceId, timestamp])
   @@index([userId])
   @@index([sessionId])
+}
+
+// ============================================================
+// Segment
+// ============================================================
+//
+// Saved user segments for analytics.
+//
+// A segment belongs to one workspace and contains one or more
+// rules that determine which users belong to the segment.
+//
+// ============================================================
+
+// ============================================================
+// Segment
+// ============================================================
+
+model Segment {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+
+  rules SegmentRule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+}
+
+// ============================================================
+// Segment Rule
+// ============================================================
+//
+// Individual conditions used by a segment.
+//
+// Examples:
+//
+// device = mobile
+// country = India
+// browser = Chrome
+// event = feature_used
+//
+// ============================================================
+
+// ============================================================
+// Segment Rule
+// ============================================================
+
+model SegmentRule {
+  id        String  @id @default(cuid())
+  segmentId String
+  segment   Segment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+
+  field    String
+  operator String
+  value    String
+
+  createdAt DateTime @default(now())
+
+  @@index([segmentId])
 }
