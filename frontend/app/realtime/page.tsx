@@ -150,7 +150,31 @@ export default function RealtimePage() {
             EVENT_LIMIT
           );
 
-        setEvents(response.data);
+        setEvents((currentEvents) => {
+          // Merge the database result with anything that may have
+          // arrived through SSE while the request was in flight.
+          const merged = [
+            ...currentEvents,
+            ...response.data,
+          ];
+
+          const uniqueEvents = Array.from(
+            new Map(
+              merged.map((event) => [
+                event.id,
+                event,
+              ])
+            ).values()
+          );
+
+          return uniqueEvents
+            .sort(
+              (a, b) =>
+                new Date(b.timestamp).getTime() -
+                new Date(a.timestamp).getTime()
+            )
+            .slice(0, EVENT_LIMIT);
+        });
 
         const now = new Date();
 
@@ -207,27 +231,45 @@ export default function RealtimePage() {
     // --------------------------------------------------------
 
     eventSource.onopen = () => {
+      console.log(
+        "[SSE] Browser connection opened."
+      );
+
       setConnected(true);
       setError(null);
     };
 
     // --------------------------------------------------------
-    // Generic message
+    // Handle an incoming realtime event.
     //
-    // The backend sends:
+    // The backend normally sends:
     //
+    // data: {...event}
+    //
+    // We also listen for a named "event" message so the frontend
+    // still works if the server sends:
+    //
+    // event: event
     // data: {...event}
     //
     // --------------------------------------------------------
 
-    eventSource.onmessage = (
-      message
+    const handleRealtimeMessage = (
+      message: MessageEvent<string>
     ) => {
       try {
         const newEvent =
           JSON.parse(
             message.data
           ) as AnalyticsEvent;
+
+        // Ignore malformed/non-event messages.
+        if (
+          !newEvent ||
+          typeof newEvent.id !== "string"
+        ) {
+          return;
+        }
 
         setEvents((currentEvents) => {
           // --------------------------------------------------
@@ -269,6 +311,28 @@ export default function RealtimePage() {
       }
     };
 
+    // Standard SSE message.
+    eventSource.onmessage =
+      handleRealtimeMessage;
+
+    // Also support a named "event" SSE message.
+    // This is useful if the backend sends:
+    //
+    // event: event
+    // data: {...event}
+    //
+    eventSource.addEventListener(
+      "event",
+      (message) => {
+        console.log(
+          "[SSE] Named event received in browser:",
+          message.data
+        );
+
+        handleRealtimeMessage(message);
+      }
+    );
+
     // --------------------------------------------------------
     // Connected event
     //
@@ -288,6 +352,10 @@ export default function RealtimePage() {
     // --------------------------------------------------------
 
     eventSource.onerror = () => {
+      console.warn(
+        "[SSE] Browser connection error. EventSource will attempt to reconnect."
+      );
+
       setConnected(false);
     };
 
@@ -299,6 +367,25 @@ export default function RealtimePage() {
 
     return () => {
       eventSource.close();
+    };
+  }, []);
+
+  // ==========================================================
+  // Keep relative timestamps fresh
+  // ==========================================================
+  //
+  // This does not poll the backend. It only updates the local
+  // reference clock so labels such as "12s ago" stay accurate.
+  //
+  // ==========================================================
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
     };
   }, []);
 

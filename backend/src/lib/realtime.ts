@@ -66,6 +66,11 @@ export function broadcastEvent(
   workspaceId: string,
   event: unknown
 ) {
+    console.log(
+  "[SSE] Broadcasting event:",
+  workspaceId,
+  event
+);
   const message = `data: ${JSON.stringify(
     event
   )}\n\n`;
