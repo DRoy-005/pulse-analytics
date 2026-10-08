@@ -5,12 +5,13 @@
 // ============================================================
 //
 // Responsibilities:
+//
 // 1. Display the PulseAnalytics logo
 // 2. Display primary workspace navigation
 // 3. Highlight the currently active page
 // 4. Support mobile navigation
 // 5. Show upcoming features as "SOON"
-// 6. Display the current workspace
+// 6. Display the current authenticated workspace
 //
 // ============================================================
 
@@ -19,7 +20,6 @@ import { usePathname } from "next/navigation";
 
 import {
   Activity,
-  BarChart3,
   ChevronRight,
   CircleHelp,
   FileText,
@@ -30,6 +30,8 @@ import {
   Users,
   X,
 } from "lucide-react";
+
+import { useAuth } from "@/context/AuthContext";
 
 // ============================================================
 // Types
@@ -42,11 +44,6 @@ interface SidebarProps {
 
 // ============================================================
 // Primary navigation
-// ============================================================
-//
-// Working pages have an href without `soon`.
-// Upcoming pages keep `soon: true` and remain disabled.
-//
 // ============================================================
 
 const navigationItems = [
@@ -111,9 +108,18 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
 
-  // ----------------------------------------------------------
+  // ==========================================================
+  // Authenticated workspace
+  // ==========================================================
+
+  const {
+    workspace,
+    loading: authLoading,
+  } = useAuth();
+
+  // ==========================================================
   // Determine whether a navigation item is active
-  // ----------------------------------------------------------
+  // ==========================================================
 
   function isActive(href: string) {
     if (href === "/") {
@@ -207,33 +213,6 @@ export function Sidebar({
             {navigationItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
-
-              // ------------------------------------------------
-              // Upcoming feature
-              // ------------------------------------------------
-
-              // if (item.soon) {
-              //   return (
-              //     <div
-              //       key={item.label}
-              //       className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 dark:text-slate-500"
-              //     >
-              //       <Icon size={18} />
-
-              //       <span className="flex-1">
-              //         {item.label}
-              //       </span>
-
-              //       <span className="text-[11px] font-medium">
-              //         SOON
-              //       </span>
-              //     </div>
-              //   );
-              // }
-
-              // ------------------------------------------------
-              // Working page
-              // ------------------------------------------------
 
               return (
                 <Link
@@ -329,7 +308,7 @@ export function Sidebar({
         </div>
 
         {/* ==================================================
-            Workspace card
+            Authenticated Workspace Card
             ================================================== */}
 
         <div className="border-t border-slate-200 p-4 dark:border-slate-800">
@@ -343,7 +322,10 @@ export function Sidebar({
 
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
-                Demo Workspace
+                {authLoading
+                  ? "Loading workspace..."
+                  : workspace?.name ||
+                    "Workspace"}
               </p>
 
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">

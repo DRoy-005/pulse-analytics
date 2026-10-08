@@ -9,6 +9,8 @@
 // Data is retrieved from the PulseAnalytics backend and is
 // calculated from real sessions in the database.
 //
+// The workspace is taken from the authenticated user.
+//
 // ============================================================
 
 import { useEffect, useState } from "react";
@@ -20,14 +22,20 @@ import {
   Monitor,
 } from "lucide-react";
 
+// ============================================================
+// Authentication
+// ============================================================
+
+import { useAuth } from "@/context/AuthContext";
+
+// ============================================================
+// API
+// ============================================================
+
 import {
   getDeviceBreakdown,
   type DeviceBreakdownItem,
 } from "@/lib/api";
-
-import {
-  CURRENT_WORKSPACE_ID,
-} from "@/lib/workspace";
 
 // ============================================================
 // Device Icon
@@ -63,6 +71,19 @@ export function DeviceBreakdown({
 }: {
   days: number;
 }) {
+  // ----------------------------------------------------------
+  // Authenticated workspace
+  // ----------------------------------------------------------
+
+  const {
+    workspace,
+    loading: authLoading,
+  } = useAuth();
+
+  // ----------------------------------------------------------
+  // Device data
+  // ----------------------------------------------------------
+
   const [devices, setDevices] =
     useState<DeviceBreakdownItem[]>([]);
 
@@ -72,15 +93,26 @@ export function DeviceBreakdown({
   const [error, setError] =
     useState<string | null>(null);
 
+  // ==========================================================
+  // Load Device Data
+  // ==========================================================
+
   useEffect(() => {
+    // Wait until authentication has finished.
+    if (authLoading || !workspace) {
+      return;
+    }
+
+    // Store the workspace ID locally.
+    const workspaceId = workspace.id;
+
     async function loadDevices() {
       try {
-        setLoading(true);
         setError(null);
 
         const response =
           await getDeviceBreakdown(
-            CURRENT_WORKSPACE_ID,
+            workspaceId,
             days
           );
 
@@ -100,7 +132,15 @@ export function DeviceBreakdown({
     }
 
     loadDevices();
-  }, []);
+  }, [
+    workspace,
+    authLoading,
+    days,
+  ]);
+
+  // ==========================================================
+  // Render
+  // ==========================================================
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">

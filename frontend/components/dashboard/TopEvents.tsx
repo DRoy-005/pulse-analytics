@@ -9,6 +9,8 @@
 // Data comes directly from PostgreSQL through the
 // PulseAnalytics analytics API.
 //
+// The workspace is taken from the authenticated user.
+//
 // ============================================================
 
 import { useEffect, useState } from "react";
@@ -17,14 +19,20 @@ import {
   MousePointerClick,
 } from "lucide-react";
 
+// ============================================================
+// Authentication
+// ============================================================
+
+import { useAuth } from "@/context/AuthContext";
+
+// ============================================================
+// API
+// ============================================================
+
 import {
   getTopEvents,
   type TopEvent,
 } from "@/lib/api";
-
-import {
-  CURRENT_WORKSPACE_ID,
-} from "@/lib/workspace";
 
 // ============================================================
 // Helpers
@@ -49,6 +57,19 @@ export function TopEvents({
 }: {
   days: number;
 }) {
+  // ----------------------------------------------------------
+  // Authenticated workspace
+  // ----------------------------------------------------------
+
+  const {
+    workspace,
+    loading: authLoading,
+  } = useAuth();
+
+  // ----------------------------------------------------------
+  // Events
+  // ----------------------------------------------------------
+
   const [events, setEvents] =
     useState<TopEvent[]>([]);
 
@@ -63,14 +84,22 @@ export function TopEvents({
   // ==========================================================
 
   useEffect(() => {
+    // Wait until authentication has finished.
+    if (authLoading || !workspace) {
+      return;
+    }
+
+    // Store the workspace ID locally.
+    // TypeScript now knows this is a string.
+    const workspaceId = workspace.id;
+
     async function loadTopEvents() {
       try {
-        setLoading(true);
         setError(null);
 
         const response =
           await getTopEvents(
-            CURRENT_WORKSPACE_ID,
+            workspaceId,
             days,
             5
           );
@@ -91,7 +120,11 @@ export function TopEvents({
     }
 
     loadTopEvents();
-  }, []);
+  }, [
+    workspace,
+    authLoading,
+    days,
+  ]);
 
   // ==========================================================
   // Render

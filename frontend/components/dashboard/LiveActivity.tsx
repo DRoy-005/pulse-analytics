@@ -9,6 +9,8 @@
 //
 // Data comes directly from the backend API.
 //
+// The workspace is taken from the authenticated user.
+//
 // ============================================================
 
 import { useEffect, useState } from "react";
@@ -21,16 +23,21 @@ import {
   ShoppingCart,
 } from "lucide-react";
 
+// ============================================================
+// Authentication
+// ============================================================
+
+import { useAuth } from "@/context/AuthContext";
+
+// ============================================================
+// API
+// ============================================================
+
 import {
   getRecentEvents,
   type AnalyticsEvent,
 } from "@/lib/api";
 
-// ============================================================
-// Constants
-// ============================================================
-
-import { CURRENT_WORKSPACE_ID } from "@/lib/workspace";
 // ============================================================
 // Helpers
 // ============================================================
@@ -136,6 +143,19 @@ function formatRelativeTime(
 // ============================================================
 
 export function LiveActivity() {
+  // ----------------------------------------------------------
+  // Authenticated workspace
+  // ----------------------------------------------------------
+
+  const {
+    workspace,
+    loading: authLoading,
+  } = useAuth();
+
+  // ----------------------------------------------------------
+  // Events
+  // ----------------------------------------------------------
+
   const [events, setEvents] = useState<
     AnalyticsEvent[]
   >([]);
@@ -151,17 +171,25 @@ export function LiveActivity() {
   // ----------------------------------------------------------
 
   useEffect(() => {
+    // Wait until authentication has finished.
+    if (authLoading || !workspace) {
+      return;
+    }
+
+    // Store the workspace ID locally.
+    // TypeScript now knows this is a string.
+    const workspaceId = workspace.id;
+
     async function loadEvents() {
       try {
-        setLoading(true);
         setError(null);
 
         const response =
-  await getRecentEvents(
-    CURRENT_WORKSPACE_ID,
-    1,
-    8
-  );
+          await getRecentEvents(
+            workspaceId,
+            1,
+            8
+          );
 
         setEvents(response.data);
       } catch (error) {
@@ -179,7 +207,10 @@ export function LiveActivity() {
     }
 
     loadEvents();
-  }, []);
+  }, [
+    workspace,
+    authLoading,
+  ]);
 
   // ==========================================================
   // Render

@@ -7,12 +7,14 @@
 // Main analytics dashboard for PulseAnalytics.
 //
 // Responsibilities:
+//
 // 1. Manage dashboard-level state
 // 2. Retrieve real analytics metrics from the backend
 // 3. Manage the global dashboard date range
-// 4. Render the dashboard header
-// 5. Combine reusable dashboard components
-// 6. Handle loading and error states
+// 4. Use the authenticated user's workspace
+// 5. Render the dashboard header
+// 6. Combine reusable dashboard components
+// 7. Handle loading and error states
 //
 // ============================================================
 
@@ -30,6 +32,12 @@ import {
 } from "lucide-react";
 
 // ============================================================
+// Authentication
+// ============================================================
+
+import { useAuth } from "@/context/AuthContext";
+
+// ============================================================
 // API
 // ============================================================
 
@@ -37,12 +45,6 @@ import {
   getAnalyticsOverview,
   type AnalyticsMetrics,
 } from "@/lib/api";
-
-// ============================================================
-// Workspace
-// ============================================================
-
-import { CURRENT_WORKSPACE_ID } from "@/lib/workspace";
 
 // ============================================================
 // Reusable Dashboard Components
@@ -82,6 +84,15 @@ const DATE_RANGES = [
 
 export default function DashboardPage() {
   // ----------------------------------------------------------
+  // Authentication
+  // ----------------------------------------------------------
+
+  const {
+    workspace,
+    loading: authLoading,
+  } = useAuth();
+
+  // ----------------------------------------------------------
   // Mobile navigation
   // ----------------------------------------------------------
 
@@ -110,14 +121,7 @@ export default function DashboardPage() {
     useState<AnalyticsMetrics | null>(null);
 
   // ----------------------------------------------------------
-  // Loading state
-  // ----------------------------------------------------------
-
-  const [loading, setLoading] =
-    useState(true);
-
-  // ----------------------------------------------------------
-  // Error state
+  // Analytics error
   // ----------------------------------------------------------
 
   const [error, setError] =
@@ -128,14 +132,24 @@ export default function DashboardPage() {
   // ==========================================================
 
   useEffect(() => {
+    // Authentication is still being restored.
+    // Wait until AuthContext finishes.
+    if (authLoading || !workspace) {
+      return;
+    }
+
+    // Store the workspace ID in a local constant.
+    // This guarantees TypeScript knows it cannot be null
+    // inside the async function below.
+    const workspaceId = workspace.id;
+
     async function loadAnalytics() {
       try {
-        setLoading(true);
         setError(null);
 
         const response =
           await getAnalyticsOverview(
-            CURRENT_WORKSPACE_ID,
+            workspaceId,
             selectedDays
           );
 
@@ -151,13 +165,31 @@ export default function DashboardPage() {
         setError(
           "Unable to load dashboard analytics."
         );
-      } finally {
-        setLoading(false);
       }
     }
 
     loadAnalytics();
-  }, [selectedDays]);
+  }, [
+    workspace,
+    authLoading,
+    selectedDays,
+  ]);
+
+  // ==========================================================
+  // Derived loading state
+  // ==========================================================
+  //
+  // We don't need another useState for loading.
+  // Authentication loading comes from AuthContext.
+  // Before metrics arrive, the dashboard is still loading.
+  //
+  // ==========================================================
+
+  const loading =
+    authLoading ||
+    (workspace !== null &&
+      metrics === null &&
+      error === null);
 
   // ==========================================================
   // Current Date Range Label
@@ -196,6 +228,56 @@ export default function DashboardPage() {
     metrics !== null
       ? `${metrics.conversionRate.toFixed(2)}%`
       : "—";
+
+  // ==========================================================
+  // Authentication Loading Screen
+  // ==========================================================
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-900 dark:text-white">
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500 dark:border-slate-700 dark:border-t-emerald-400" />
+
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Loading your workspace...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================
+  // No authenticated workspace
+  // ==========================================================
+
+  if (!workspace) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-900 dark:text-white">
+        <div className="flex min-h-screen items-center justify-center px-4">
+          <div className="max-w-md text-center">
+            <h1 className="text-xl font-semibold">
+              Authentication required
+            </h1>
+
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Please log in to access your
+              analytics workspace.
+            </p>
+
+            <a
+              href="/login"
+              className="mt-5 inline-flex rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700"
+            >
+              Go to login
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ==========================================================
   // Render
@@ -263,7 +345,9 @@ export default function DashboardPage() {
               className="flex items-center gap-2 rounded-xl p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
-                DR
+                {workspace.name
+                  ?.charAt(0)
+                  .toUpperCase() ?? "P"}
               </div>
 
               <ChevronDown
@@ -500,7 +584,9 @@ export default function DashboardPage() {
               AI Insight
               ================================================== */}
 
-          <AIInsight days={selectedDays} />
+          <AIInsight
+            days={selectedDays}
+          />
 
         </main>
 

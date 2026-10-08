@@ -10,6 +10,9 @@
 // The backend currently uses rule-based analytics.
 // An actual AI/LLM layer can be added later.
 //
+// The workspace is taken from the authenticated user so that
+// each user only receives insights for their own workspace.
+//
 // ============================================================
 
 import { useEffect, useState } from "react";
@@ -21,14 +24,12 @@ import {
   Minus,
 } from "lucide-react";
 
+import { useAuth } from "@/context/AuthContext";
+
 import {
   getAnalyticsInsight,
   type AnalyticsInsight as AnalyticsInsightData,
 } from "@/lib/api";
-
-import {
-  CURRENT_WORKSPACE_ID,
-} from "@/lib/workspace";
 
 // ============================================================
 // Component Props
@@ -45,6 +46,19 @@ interface AIInsightProps {
 export function AIInsight({
   days,
 }: AIInsightProps) {
+  // ==========================================================
+  // Authentication / Workspace
+  // ==========================================================
+
+  const {
+    workspace,
+    loading: authLoading,
+  } = useAuth();
+
+  // ==========================================================
+  // Component State
+  // ==========================================================
+
   const [insight, setInsight] =
     useState<AnalyticsInsightData | null>(
       null
@@ -61,14 +75,23 @@ export function AIInsight({
   // ==========================================================
 
   useEffect(() => {
+    // Wait until authentication has finished and a workspace
+    // is available.
+    if (authLoading || !workspace) {
+      return;
+    }
+
+    // Use the authenticated workspace instead of the
+    // hardcoded workspace ID.
+    const workspaceId = workspace.id;
+
     async function loadInsight() {
       try {
-        setLoading(true);
         setError(null);
 
         const response =
           await getAnalyticsInsight(
-            CURRENT_WORKSPACE_ID,
+            workspaceId,
             days
           );
 
@@ -88,7 +111,11 @@ export function AIInsight({
     }
 
     loadInsight();
-  }, [days]);
+  }, [
+    workspace,
+    authLoading,
+    days,
+  ]);
 
   // ==========================================================
   // Determine Trend Icon

@@ -680,3 +680,99 @@ export async function getAnalyticsForecast(
 
   return response.json();
 }
+
+// ============================================================
+// Authentication
+// ============================================================
+
+export interface AuthUser {
+  id: string;
+  email: string | null;
+}
+
+export interface AuthWorkspace {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    token: string;
+    user: AuthUser;
+    workspace: AuthWorkspace;
+  };
+}
+
+export interface MeResponse {
+  success: boolean;
+  data: {
+    user: AuthUser;
+    workspace: AuthWorkspace;
+  };
+}
+
+// Register a new account
+export async function registerUser(
+  name: string,
+  email: string,
+  password: string
+): Promise<AuthResponse> {
+  const response = await apiFetch(
+    "/api/auth/register",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+      }),
+    }
+  );
+
+  return response.json();
+}
+
+// Login an existing account
+export async function loginUser(
+  email: string,
+  password: string
+): Promise<AuthResponse> {
+  const response = await apiFetch(
+    "/api/auth/login",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    }
+  );
+
+  return response.json();
+}
+
+// Get the currently authenticated user
+export async function getCurrentUser(
+  token: string
+): Promise<MeResponse> {
+  const response = await apiFetch(
+    "/api/auth/me",
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return response.json();
+}

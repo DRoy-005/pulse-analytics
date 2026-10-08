@@ -7,6 +7,9 @@
 // Displays real event traffic retrieved from the
 // PulseAnalytics backend.
 //
+// The chart uses the authenticated user's workspace
+// instead of a hardcoded workspace ID.
+//
 // ============================================================
 
 import { useEffect, useState } from "react";
@@ -21,16 +24,21 @@ import {
   YAxis,
 } from "recharts";
 
+// ============================================================
+// Authentication
+// ============================================================
+
+import { useAuth } from "@/context/AuthContext";
+
+// ============================================================
+// API
+// ============================================================
+
 import {
   getTrafficData,
   type TrafficDataPoint,
 } from "@/lib/api";
 
-// ============================================================
-// Constants
-// ============================================================
-
-import { CURRENT_WORKSPACE_ID } from "@/lib/workspace";
 // ============================================================
 // Component
 // ============================================================
@@ -40,6 +48,19 @@ export function TrafficChart({
 }: {
   days: number;
 }) {
+  // ----------------------------------------------------------
+  // Get authenticated workspace
+  // ----------------------------------------------------------
+
+  const {
+    workspace,
+    loading: authLoading,
+  } = useAuth();
+
+  // ----------------------------------------------------------
+  // Traffic data
+  // ----------------------------------------------------------
+
   const [data, setData] = useState<
     TrafficDataPoint[]
   >([]);
@@ -55,14 +76,23 @@ export function TrafficChart({
   // ----------------------------------------------------------
 
   useEffect(() => {
+    // Authentication is still being restored.
+    // Wait until AuthContext finishes.
+    if (authLoading || !workspace) {
+      return;
+    }
+
+    // Store the workspace ID locally.
+    // TypeScript now knows this is a string.
+    const workspaceId = workspace.id;
+
     async function loadTraffic() {
       try {
-        setLoading(true);
         setError(null);
 
         const response =
           await getTrafficData(
-            CURRENT_WORKSPACE_ID,
+            workspaceId,
             days
           );
 
@@ -82,7 +112,11 @@ export function TrafficChart({
     }
 
     loadTraffic();
-  }, []);
+  }, [
+    workspace,
+    authLoading,
+    days,
+  ]);
 
   // ----------------------------------------------------------
   // Format dates for the chart
@@ -91,6 +125,7 @@ export function TrafficChart({
   const chartData = data.map(
     (item) => ({
       ...item,
+
       label: new Date(
         `${item.date}T00:00:00`
       ).toLocaleDateString(
@@ -153,80 +188,94 @@ export function TrafficChart({
       )}
 
       {/* ====================================================
+          Empty State
+          ==================================================== */}
+
+      {!loading &&
+        !error &&
+        chartData.length === 0 && (
+          <div className="flex h-[280px] items-center justify-center text-sm text-slate-400">
+            No traffic data available.
+          </div>
+        )}
+
+      {/* ====================================================
           Chart
           ==================================================== */}
 
-      {!loading && !error && (
-        <div className="h-[280px] w-full">
+      {!loading &&
+        !error &&
+        chartData.length > 0 && (
+          <div className="h-[280px] w-full">
 
-          <ResponsiveContainer
-            width="100%"
-            height="100%"
-          >
-            <LineChart
-              data={chartData}
-              margin={{
-                top: 5,
-                right: 10,
-                left: -20,
-                bottom: 5,
-              }}
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
             >
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-                className="stroke-slate-200 dark:stroke-slate-800"
-              />
-
-              <XAxis
-                dataKey="label"
-                axisLine={false}
-                tickLine={false}
-                tick={{
-                  fontSize: 12,
+              <LineChart
+                data={chartData}
+                margin={{
+                  top: 5,
+                  right: 10,
+                  left: -20,
+                  bottom: 5,
                 }}
-                className="fill-slate-500"
-              />
+              >
 
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                allowDecimals={false}
-                tick={{
-                  fontSize: 12,
-                }}
-                className="fill-slate-500"
-              />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  className="stroke-slate-200 dark:stroke-slate-800"
+                />
 
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "12px",
-                  border: "1px solid #e2e8f0",
-                  backgroundColor: "white",
-                }}
-                formatter={(value) => [
-                  value,
-                  "Events",
-                ]}
-              />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{
+                    fontSize: 12,
+                  }}
+                  className="fill-slate-500"
+                />
 
-              <Line
-                type="monotone"
-                dataKey="events"
-                stroke="#10b981"
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{
-                  r: 5,
-                }}
-              />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                  tick={{
+                    fontSize: 12,
+                  }}
+                  className="fill-slate-500"
+                />
 
-            </LineChart>
-          </ResponsiveContainer>
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "white",
+                  }}
+                  formatter={(value) => [
+                    value,
+                    "Events",
+                  ]}
+                />
 
-        </div>
-      )}
+                <Line
+                  type="monotone"
+                  dataKey="events"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{
+                    r: 5,
+                  }}
+                />
+
+              </LineChart>
+            </ResponsiveContainer>
+
+          </div>
+        )}
 
     </div>
   );

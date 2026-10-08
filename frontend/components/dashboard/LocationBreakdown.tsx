@@ -9,20 +9,21 @@
 // Data is retrieved from the PulseAnalytics backend and is
 // calculated from real sessions in the database.
 //
+// The workspace is taken from the authenticated user so that
+// each user only sees data belonging to their workspace.
+//
 // ============================================================
 
 import { useEffect, useState } from "react";
 
 import { Globe2 } from "lucide-react";
 
+import { useAuth } from "@/context/AuthContext";
+
 import {
   getLocationBreakdown,
   type LocationBreakdownItem,
 } from "@/lib/api";
-
-import {
-  CURRENT_WORKSPACE_ID,
-} from "@/lib/workspace";
 
 // ============================================================
 // LocationBreakdown Component
@@ -33,6 +34,19 @@ export function LocationBreakdown({
 }: {
   days: number;
 }) {
+  // ==========================================================
+  // Authentication / Workspace
+  // ==========================================================
+
+  const {
+    workspace,
+    loading: authLoading,
+  } = useAuth();
+
+  // ==========================================================
+  // Component State
+  // ==========================================================
+
   const [locations, setLocations] =
     useState<LocationBreakdownItem[]>([]);
 
@@ -42,15 +56,28 @@ export function LocationBreakdown({
   const [error, setError] =
     useState<string | null>(null);
 
+  // ==========================================================
+  // Load Location Data
+  // ==========================================================
+
   useEffect(() => {
+    // Wait until authentication has finished and a workspace
+    // is available.
+    if (authLoading || !workspace) {
+      return;
+    }
+
+    // Use the authenticated user's workspace instead of a
+    // hardcoded workspace ID.
+    const workspaceId = workspace.id;
+
     async function loadLocations() {
       try {
-        setLoading(true);
         setError(null);
 
         const response =
           await getLocationBreakdown(
-            CURRENT_WORKSPACE_ID,
+            workspaceId,
             days,
             5
           );
@@ -71,7 +98,11 @@ export function LocationBreakdown({
     }
 
     loadLocations();
-  }, []);
+  }, [
+    workspace,
+    authLoading,
+    days,
+  ]);
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
